@@ -1,0 +1,68 @@
+export const POST_STATUS = {
+  DRAFT: 'DRAFT',
+  SCHEDULED: 'SCHEDULED',
+  PROCESSING: 'PROCESSING',
+  PUBLISHED: 'PUBLISHED',
+  PARTIAL: 'PARTIAL',
+  FAILED: 'FAILED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type PostStatus = (typeof POST_STATUS)[keyof typeof POST_STATUS];
+
+export const POST_DESTINATION_STATUS = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  PUBLISHED: 'PUBLISHED',
+  FAILED: 'FAILED',
+  SKIPPED: 'SKIPPED',
+} as const;
+
+export type PostDestinationStatus =
+  (typeof POST_DESTINATION_STATUS)[keyof typeof POST_DESTINATION_STATUS];
+
+export const SOCIAL_PROVIDER = {
+  INSTAGRAM: 'INSTAGRAM',
+  FACEBOOK: 'FACEBOOK',
+  THREADS: 'THREADS',
+  TWITTER: 'TWITTER',
+  TIKTOK: 'TIKTOK',
+  YOUTUBE: 'YOUTUBE',
+} as const;
+
+export type SocialProviderKey = (typeof SOCIAL_PROVIDER)[keyof typeof SOCIAL_PROVIDER];
+
+export const NOTIFICATION_CHANNEL = {
+  WEB: 'WEB',
+  EMAIL: 'EMAIL',
+  PUSH: 'PUSH',
+} as const;
+
+export const ERROR_CODES = {
+  UNAUTHORIZED: 'AUTH_001',
+  FORBIDDEN: 'AUTH_002',
+  NOT_FOUND: 'NOT_FOUND_001',
+  VALIDATION: 'VALIDATION_001',
+  RATE_LIMITED: 'RATE_LIMIT_001',
+  SOCIAL_TOKEN_EXPIRED: 'SOCIAL_TOKEN_EXPIRED_001',
+  SOCIAL_PUBLISH_FAILED: 'SOCIAL_PUBLISH_FAILED_001',
+  QUEUE_UNAVAILABLE: 'QUEUE_UNAVAILABLE_001',
+} as const;
+
+export const DEFAULT_PAGE_SIZE = 20;
+export const MAX_PAGE_SIZE = 100;
+
+export const MEDIA_KIND = {
+  IMAGE: 'IMAGE',
+  VIDEO: 'VIDEO',
+} as const;
+
+export type MediaKind = (typeof MEDIA_KIND)[keyof typeof MEDIA_KIND];
+
+export const MEDIA_STATUS = {
+  READY: 'READY',
+  PROCESSING: 'PROCESSING',
+  FAILED: 'FAILED',
+} as const;
+
+export type MediaStatus = (typeof MEDIA_STATUS)[keyof typeof MEDIA_STATUS];

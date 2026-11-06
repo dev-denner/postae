@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.next/
+.turbo/
+out/
+.env
+.env.local
+*.log
+npm-debug.log*
+coverage/
+.venv/
+__pycache__/
+.DS_Store
+Thumbs.db
+prisma/dev.db
+prisma/migrations/
+!prisma/migrations/migration_lock.toml

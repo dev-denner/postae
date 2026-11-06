@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Postaê — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mare:#EAF0F8;
+  --tinta:#0E1A2B;
+  --cobalto:#2440E0;
+  --sol:#F2A900;
+  --barro:#C62F2F;
+  --paper:#FFFFFF;
+  --line:#C7D2E4;
+  --muted:#5A6B84;
+  --ok:#0F6B3E;
+  --rail:248px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--mare);
+  color:var(--tinta);
+  font-family:"Archivo",system-ui,-apple-system,Segoe UI,sans-serif;
+  font-size:16px; line-height:1.5;
+}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--sol); outline-offset:3px; border-radius:6px}
+.skip{position:absolute;left:12px;top:-48px;background:var(--tinta);color:#fff;padding:10px 14px;border-radius:10px;z-index:20}
+.skip:focus{top:12px}
+.layout{display:grid;grid-template-columns:var(--rail) 1fr;min-height:100vh}
+.rail{
+  background:var(--tinta); color:#EAF0F8;
+  padding:28px 22px 22px;
+  display:flex; flex-direction:column; gap:28px;
+  position:sticky; top:0; height:100vh;
+}
+.brand{
+  font-family:"Fraunces",serif; font-weight:700;
+  font-size:34px; letter-spacing:-.02em; line-height:1;
+  color:#fff; text-decoration:none;
+}
+.brand em{font-style:italic;color:var(--sol)}
+.rail p{margin:8px 0 0;color:#B9CBE8;max-width:190px;font-size:14px}
+nav{display:flex;flex-direction:column;gap:4px}
+nav a{
+  text-decoration:none; padding:11px 12px; border-radius:12px;
+  color:#D7E3F5; font-weight:500;
+}
+nav a:hover{background:rgba(255,255,255,.08);color:#fff}
+nav a[aria-current="page"]{
+  background:#fff; color:var(--tinta); font-weight:700;
+  border-left:6px solid var(--sol);
+}
+.workspace{margin-top:auto;border-top:1px solid rgba(255,255,255,.18);padding-top:18px}
+.workspace small{color:#B9CBE8; display:block; margin-bottom:2px}
+.workspace strong{font-family:"Fraunces",serif;font-size:20px;color:#fff;font-weight:700}
+main{padding:28px 32px 44px; max-width:1240px; width:100%; margin:0 auto}
+.top{
+  display:flex; align-items:end; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  padding-bottom:18px; border-bottom:2px solid var(--tinta);
+}
+h1{
+  font-family:"Fraunces",serif; font-weight:700;
+  font-size:clamp(38px,5vw,56px); line-height:.95; letter-spacing:-.03em; margin:0;
+}
+.top .lede{margin:10px 0 0;color:var(--muted);max-width:62ch}
+.actions{display:flex; gap:10px; flex-wrap:wrap}
+.btn{
+  appearance:none;border:2px solid var(--tinta);background:#fff;color:var(--tinta);
+  padding:12px 18px; border-radius:999px; font:inherit; font-weight:700; cursor:pointer; text-decoration:none;
+  display:inline-flex; align-items:center;
+}
+.btn.primary{background:var(--cobalto); border-color:var(--cobalto); color:#fff}
+.btn.primary:hover{background:#1B31B8}
+.btn:hover{transform:none}
+
+/* Ledger — no boxed cards: figures sit on ruled lines */
+.ledger{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:22px;
+  margin-top:22px;
+  padding:8px 22px 18px;
+}
+.ledger h2{
+  font-family:"Fraunces",serif; font-size:22px; margin:14px 0 4px; letter-spacing:-.01em;
+}
+.figures{
+  display:grid; grid-template-columns:repeat(4,1fr);
+}
+.figure{
+  padding:18px 16px 14px;
+  border-right:1px solid var(--line);
+}
+.figure:first-child{padding-left:0}
+.figure:last-child{border-right:0;padding-right:0}
+.figure dt{color:var(--muted); font-size:14px; margin:0}
+.figure dd{margin:4px 0 6px}
+.number{
+  font-family:"Fraunces",serif; font-weight:700; font-size:64px; line-height:.9; letter-spacing:-.04em;
+}
+.number.alert{color:var(--barro)}
+.figure small{color:var(--muted)}
+.figures-secondary{
+  display:grid; grid-template-columns:repeat(4,1fr);
+  border-top:1px solid var(--line);
+}
+.figures-secondary div{padding:14px 18px 4px 0}
+.figures-secondary div + div{padding-left:18px;border-left:1px solid var(--line)}
+.figures-secondary dt{color:var(--muted);font-size:14px}
+.figures-secondary dd{margin:2px 0 8px;font-weight:700;font-size:18px}
+
+/* Lower two columns */
+.panels{display:grid; grid-template-columns:1.25fr 1fr; gap:18px; margin-top:18px}
+.panel{
+  background:var(--paper); border:1px solid var(--line); border-radius:22px; padding:18px;
+}
+.panel h2{font-family:"Fraunces",serif;font-size:26px;margin:2px 0 10px;letter-spacing:-.02em}
+.panel .hint{color:var(--muted);margin:0 0 14px;max-width:70ch}
+
+/* The one bold moment: stamped next post */
+.stamp{
+  border:3px solid var(--tinta);
+  background:var(--sol);
+  border-radius:18px;
+  padding:13px 16px;
+  transform:rotate(-3deg);
+  box-shadow:6px 6px 0 var(--tinta);
+  margin:8px 4px 16px;
+}
+.stamp small{font-weight:700; letter-spacing:.02em}
+.stamp .when{
+  font-family:"Fraunces",serif; font-weight:700;
+  font-size:clamp(30px,4vw,44px); line-height:.95; letter-spacing:-.03em; display:block; margin:2px 0 3px;
+  white-space:nowrap;
+}
+.stamp p{margin:0; font-weight:700; font-size:14px}
+.stamp span{font-weight:500}
+
+ul.posts{list-style:none;margin:0;padding:0}
+ul.posts li{
+  display:flex; gap:12px; align-items:flex-start; padding:13px 0;
+  border-top:1px solid var(--line);
+}
+.post-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.thumb{width:52px;height:52px;border-radius:13px;flex:0 0 52px;border:1px solid var(--line)}
+.t1{background:linear-gradient(160deg,#F2A900,#2440E0)}
+.t2{background:linear-gradient(160deg,#7AC75E,#0E1A2B)}
+.t3{background:linear-gradient(160deg,#8B7CFF,#0E1A2B)}
+.t4{background:linear-gradient(160deg,#7ED6FF,#2440E0)}
+.post-main{min-width:0}
+.post-main strong{display:block;font-size:16px;letter-spacing:-.01em;line-height:1.25}
+.post-main > span{color:var(--muted);font-size:13px}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.account-id strong{display:block;overflow-wrap:anywhere;word-break:normal}
+.nets{display:inline-flex;gap:6px;flex-wrap:wrap}
+.net{
+  width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  color:#fff;font-weight:800;font-size:11px;border:2px solid var(--tinta);flex:0 0 auto;
+}
+.accounts .net{width:34px;height:34px;font-size:12px}
+.ig{background:#C0267A}.fb{background:#1450C8}.th{background:#111}.tt{background:#0B7A6E}.yt{background:#C62F2F}.x{background:#333}
+.status{padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.scheduled{background:#E5EAFF;color:#1B31B8}
+.processing{background:#FFF1C7;color:#7A5A00}
+.failed{background:#FDE4E4;color:var(--barro)}
+.draft{background:#EDF1F7;color:#5A6B84}
+@media (prefers-reduced-motion: reduce){
+  *{scroll-behavior:auto !important; transition:none !important; animation:none !important}
+}
+
+.accounts{list-style:none;margin:0;padding:0}
+.accounts li{
+  display:flex; align-items:center; gap:12px; padding:13px 0; border-top:1px solid var(--line);
+}
+.account-id{min-width:0;flex:1}
+.account-id strong{display:block; overflow-wrap:anywhere}
+.account-id span{color:var(--muted);font-size:14px}
+.token{color:var(--muted);font-size:14px;text-align:right}
+.token.urgent{color:#7A5A00;font-weight:700}
+.token .dot{
+  display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--sol);
+  border:1px solid var(--tinta);margin-right:6px;vertical-align:1px;
+}
+.callout{
+  margin-top:14px; background:#FFF7D6; border:1px solid var(--sol); border-radius:14px; padding:12px 14px;
+}
+.callout p{margin:0}
+.callout strong{display:block}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:column}
+  .workspace{margin-top:8px}
+  main{padding:20px 16px 32px}
+  .figures,.figures-secondary{grid-template-columns:1fr 1fr}
+  .figure,.figures-secondary div{border-right:0;border-bottom:1px solid var(--line);padding-right:0}
+  .figure + .figure,.figures-secondary div + div{padding-left:0;border-left:0}
+  .panels{grid-template-columns:1fr}
+  .number{font-size:52px}
+}
+@media (max-width:560px){
+  .figures,.figures-secondary{grid-template-columns:1fr}
+  ul.posts li{flex-wrap:wrap}
+  .nets{justify-content:start}
+  .token{text-align:left}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<div class="layout">
+  <aside class="rail" aria-label="Navegação principal">
+    <div>
+      <a class="brand" href="#">Posta<em>ê</em></a>
+      <p>Agenda de posts para Studio Aurora.</p>
+    </div>
+    <nav aria-label="Seções">
+      <a href="#" aria-current="page">Dashboard</a>
+      <a href="#">Criar post</a>
+      <a href="#">Calendário</a>
+      <a href="#">Biblioteca</a>
+      <a href="#">Publicações</a>
+      <a href="#">Análises</a>
+      <a href="#">Configurações</a>
+    </nav>
+    <div class="workspace">
+      <small>Workspace</small>
+      <strong>Studio Aurora</strong>
+    </div>
+  </aside>
+
+  <main id="conteudo">
+    <div class="top">
+      <div>
+        <h1>Dashboard</h1>
+        <p class="lede">Veja o que entra hoje, o que já está agendado e o que precisa de atenção antes de publicar.</p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="#">Importar CSV</a>
+        <a class="btn primary" href="#">Criar post</a>
+      </div>
+    </div>
+
+    <section class="ledger" aria-labelledby="resumo-titulo">
+      <h2 id="resumo-titulo">Resumo de dezembro</h2>
+      <dl class="figures">
+        <div class="figure">
+          <dt>Publicações do mês</dt>
+          <dd class="number">48</dd>
+          <small>dez 2026</small>
+        </div>
+        <div class="figure">
+          <dt>Agendadas</dt>
+          <dd class="number">21</dd>
+          <small>próximos 14 dias</small>
+        </div>
+        <div class="figure">
+          <dt>Publicadas</dt>
+          <dd class="number">24</dd>
+          <small>sem falhas recentes</small>
+        </div>
+        <div class="figure">
+          <dt>Falhas</dt>
+          <dd class="number alert">3</dd>
+          <small>requer atenção</small>
+        </div>
+      </dl>
+      <dl class="figures-secondary" aria-label="Indicadores para comparar">
+        <div><dt>Engajamento</dt><dd>—</dd><small>comparar período</small></div>
+        <div><dt>Visualizações</dt><dd>—</dd><small>todas as redes</small></div>
+        <div><dt>Alcance</dt><dd>—</dd><small>todas as redes</small></div>
+        <div><dt>Cliques</dt><dd>—</dd><small>links rastreados</small></div>
+      </dl>
+    </section>
+
+    <div class="panels">
+      <section class="panel" aria-labelledby="proximas">
+        <h2 id="proximas">Próximas publicações</h2>
+        <p class="hint">O próximo horário de envio aparece em destaque. Os demais itens seguem em ordem de data.</p>
+
+        <div class="stamp" role="note" aria-label="Próxima publicação">
+          <small>Próximo envio</small>
+          <span class="when">15/12 · 19:30</span>
+          <p>Lançamento da coleção <span>— Instagram, Facebook e X</span></p>
+        </div>
+
+        <ul class="posts">
+          <li>
+            <div class="thumb t2" aria-hidden="true"></div>
+            <div class="post-body">
+              <div class="post-main"><strong>Vídeo curto: bastidores</strong><span>16/12 · 12:00</span></div>
+              <div class="meta"><span class="nets" aria-label="TikTok, YouTube"><span class="net tt">TT</span><span class="net yt">YT</span></span><span class="status processing">Processando</span></div>
+            </div>
+          </li>
+          <li>
+            <div class="thumb t3" aria-hidden="true"></div>
+            <div class="post-body">
+              <div class="post-main"><strong>Promoção de Natal</strong><span>14/12 · 09:00</span></div>
+              <div class="meta"><span class="nets" aria-label="Instagram, Threads"><span class="net ig">IG</span><span class="net th">TH</span></span><span class="status failed">Falhou</span></div>
+            </div>
+          </li>
+          <li>
+            <div class="thumb t4" aria-hidden="true"></div>
+            <div class="post-body">
+              <div class="post-main"><strong>Dicas da semana</strong><span>Rascunho</span></div>
+              <div class="meta"><span class="nets" aria-label="X"><span class="net x">X</span></span><span class="status draft">Rascunho</span></div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <section class="panel" aria-labelledby="redes">
+        <h2 id="redes">Redes conectadas</h2>
+        <p class="hint">Conexão via OAuth oficial. Reconecte antes do token vencer para não perder um envio.</p>
+        <ul class="accounts">
+          <li><span class="net ig" aria-hidden="true">IG</span><div class="account-id"><strong>@studioaurora</strong><span>Instagram</span></div><span class="token">token 42 dias</span></li>
+          <li><span class="net fb" aria-hidden="true">FB</span><div class="account-id"><strong>Studio Aurora</strong><span>Facebook</span></div><span class="token">token 18 dias</span></li>
+          <li><span class="net th" aria-hidden="true">TH</span><div class="account-id"><strong>@studioaurora</strong><span>Threads</span></div><span class="token">token 42 dias</span></li>
+          <li><span class="net tt" aria-hidden="true">TT</span><div class="account-id"><strong>@aurora.studio</strong><span>TikTok</span></div><span class="token urgent"><span class="dot"></span>expira em 3 dias</span></li>
+          <li><span class="net x" aria-hidden="true">X</span><div class="account-id"><strong>@aurora_studio</strong><span>X</span></div><span class="token">token 60 dias</span></li>
+        </ul>
+        <div class="callout">
+          <p><strong>Reconecte o TikTok agora</strong>O token de @aurora.studio vence em 3 dias. Reconectar leva menos de um minuto.</p>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>

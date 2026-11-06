@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SocialProvider {
+  INSTAGRAM
+  FACEBOOK
+  THREADS
+  TWITTER
+  TIKTOK
+  YOUTUBE
+}
+
+enum SocialAccountStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  DISCONNECTED
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  PUBLISHED
+  PARTIAL
+  FAILED
+  CANCELLED
+}
+
+enum PostDestinationStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+  SKIPPED
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum MediaStatus {
+  READY
+  PROCESSING
+  FAILED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  passwordHash  String?
+  name          String?
+  avatarUrl     String?
+  role          UserRole       @default(USER)
+  workspaces    WorkspaceMember[]
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+}
+
+model Workspace {
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  industry       String?
+  users          WorkspaceMember[]
+  socialAccounts SocialAccount[]
+  posts          Post[]
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+}
+
+model WorkspaceMember {
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(EDITOR)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([workspaceId, userId])
+}
+
+model SocialAccount {
+  id                  String              @id @default(cuid())
+  workspaceId         String
+  provider            SocialProvider
+  providerAccountId   String?
+  displayName         String?
+  username            String?
+  avatarUrl           String?
+  accessToken         String
+  refreshToken        String?
+  tokenExpiresAt      DateTime?
+  refreshTokenExpiresAt DateTime?
+  scopes              String[]
+  metadata            Json?
+  tokensEncrypted     Boolean             @default(false)
+  status              SocialAccountStatus @default(ACTIVE)
+  lastError           String?
+  lastSyncedAt        DateTime?
+  workspace           Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  posts               Post[]
+  destinations        PostDestination[]
+  connectedAt         DateTime            @default(now()) @map("connected_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  @@unique([workspaceId, provider, providerAccountId])
+  @@index([workspaceId, status])
+}
+
+model SocialAuthSession {
+  id           String         @id @default(cuid())
+  state        String         @unique
+  workspaceId  String
+  userId       String
+  provider     SocialProvider
+  codeVerifier String?
+  redirectUri  String
+  returnTo     String?
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  @@index([workspaceId, provider])
+}
+
+model Media {
+  id          String      @id @default(cuid())
+  workspaceId String
+  userId      String
+  kind        MediaKind
+  status      MediaStatus @default(READY)
+  mimeType    String
+  url         String
+  originalUrl String?
+  width       Int?
+  height      Int?
+  durationSec Int?
+  sizeBytes   Int
+  folder      String?
+  tags        String[]
+  publicId    String?
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+  posts       PostMedia[]
+}
+
+model Post {
+  id               String          @id @default(cuid())
+  workspaceId      String
+  // Campo legado: mantido para compatibilidade com consultas e dados antigos.
+  // A fonte de verdade para múltiplos destinos é `destinations`.
+  socialAccountId  String?
+  status           PostStatus      @default(DRAFT)
+  publishAt        DateTime?
+  content          Json?
+  mediaIds         String[]
+  media            PostMedia[]
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  socialAccount    SocialAccount?  @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  destinations     PostDestination[]
+  logs             PublicationLog[]
+  schedules        Schedule[]
+  createdAt        DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  publishedAt      DateTime?
+  failureReason    String?
+}
+
+model PostDestination {
+  id               String               @id @default(cuid())
+  postId           String
+  socialAccountId  String?
+  provider         SocialProvider
+  accountDisplayName String
+  accountUsername  String?
+  status           PostDestinationStatus @default(PENDING)
+  externalPostId   String?
+  error            String?
+  warning          String?
+  attempts         Int                  @default(0)
+  publishedAt      DateTime?
+  lastAttemptAt    DateTime?
+  post             Post                 @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount    SocialAccount?       @relation(fields: [socialAccountId], references: [id], onDelete: SetNull)
+  logs             PublicationLog[]
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  @@unique([postId, socialAccountId])
+  @@index([postId, status])
+}
+
+model PostMedia {
+  id        String @id @default(cuid())
+  postId    String
+  mediaId   String
+  role      String @default("PRIMARY")
+  sortIndex Int    @default(0)
+  post      Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  media     Media  @relation(fields: [mediaId], references: [id])
+  @@unique([postId, mediaId])
+}
+
+model Schedule {
+  id          String    @id @default(cuid())
+  postId      String
+  workspaceId String
+  runAt       DateTime
+  status      String    @default("PENDING")
+  attempts    Int       @default(0)
+  lastError   String?
+  executedAt  DateTime?
+  post        Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model PublicationLog {
+  id             String          @id @default(cuid())
+  postId         String?
+  destinationId  String?
+  workspaceId    String?
+  provider       String
+  status         String
+  externalPostId String?
+  requestPayload Json?
+  responsePayload Json?
+  error          String?
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  post           Post?           @relation(fields: [postId], references: [id], onDelete: Cascade)
+  destination    PostDestination? @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  @@index([postId, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  channel   String   @default("WEB")
+  payload   Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

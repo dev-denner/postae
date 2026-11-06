@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Postaê — Criar post</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mare:#EAF0F8; --tinta:#0E1A2B; --cobalto:#2440E0; --sol:#F2A900; --barro:#C62F2F;
+  --paper:#FFFFFF; --line:#C7D2E4; --muted:#5A6B84; --rail:248px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--mare);color:var(--tinta);font-family:"Archivo",system-ui,sans-serif;font-size:16px;line-height:1.5}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--sol);outline-offset:3px;border-radius:6px}
+.skip{position:absolute;left:12px;top:-48px;background:var(--tinta);color:#fff;padding:10px 14px;border-radius:10px;z-index:20}
+.skip:focus{top:12px}
+.layout{display:grid;grid-template-columns:var(--rail) 1fr;min-height:100vh}
+.rail{background:var(--tinta);color:#EAF0F8;padding:28px 22px 22px;display:flex;flex-direction:column;gap:28px;position:sticky;top:0;height:100vh}
+.brand{font-family:"Fraunces",serif;font-weight:700;font-size:34px;letter-spacing:-.02em;color:#fff;text-decoration:none}
+.brand em{font-style:italic;color:var(--sol)}
+.rail p{margin:8px 0 0;color:#B9CBE8;max-width:190px;font-size:14px}
+nav{display:flex;flex-direction:column;gap:4px}
+nav a{text-decoration:none;padding:11px 12px;border-radius:12px;color:#D7E3F5;font-weight:500}
+nav a:hover{background:rgba(255,255,255,.08);color:#fff}
+nav a[aria-current="page"]{background:#fff;color:var(--tinta);font-weight:700;border-left:6px solid var(--sol)}
+.workspace{margin-top:auto;border-top:1px solid rgba(255,255,255,.18);padding-top:18px}
+.workspace small{color:#B9CBE8;display:block}
+.workspace strong{font-family:"Fraunces",serif;font-size:20px;color:#fff}
+main{padding:28px 32px 44px;max-width:1240px;width:100%;margin:0 auto}
+.top{display:flex;align-items:end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:2px solid var(--tinta)}
+h1{font-family:"Fraunces",serif;font-weight:700;font-size:clamp(38px,5vw,56px);line-height:.95;letter-spacing:-.03em;margin:0}
+.lede{margin:10px 0 0;color:var(--muted);max-width:62ch}
+.chip{padding:7px 12px;border-radius:999px;background:#EDF1F7;color:#5A6B84;font-weight:700;font-size:13px;border:1px solid var(--line)}
+.chip.saved{background:#DFF2E4;color:#0F6B3E;border-color:#9AD1AE}
+.btn{appearance:none;border:2px solid var(--tinta);background:#fff;color:var(--tinta);padding:12px 18px;border-radius:999px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.btn.primary{background:var(--cobalto);border-color:var(--cobalto);color:#fff}
+.btn.primary:hover{background:#1B31B8}
+.editor{display:grid;grid-template-columns:1.45fr .95fr;gap:18px;margin-top:20px;align-items:start}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:20px}
+.panel h2{font-family:"Fraunces",serif;font-size:24px;margin:0 0 6px;letter-spacing:-.02em}
+.hint{color:var(--muted);margin:0 0 16px;max-width:68ch}
+.netpick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.pick{display:inline-flex;align-items:center;gap:8px;padding:7px 10px 7px 7px;border:2px solid var(--line);border-radius:999px;background:#fff;font-weight:700;cursor:pointer;font:inherit;font-size:14px}
+.pick[aria-pressed="true"]{border-color:var(--cobalto);background:#EEF1FF}
+.pick .check{font-weight:800;color:var(--cobalto)}
+.net{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:12px;border:2px solid var(--tinta);flex:0 0 auto}
+.ig{background:#C0267A}.fb{background:#1450C8}.th{background:#111}.tt{background:#0B7A6E}.yt{background:#C62F2F}.x{background:#333}
+.tabs{display:flex;gap:4px;border-bottom:2px solid var(--tinta);overflow-x:auto}
+.tab{appearance:none;border:0;background:none;font:inherit;font-weight:600;padding:10px 12px;cursor:pointer;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--cobalto);border-bottom-color:var(--cobalto)}
+.field{margin-top:16px}
+label{font-weight:700;display:block;margin-bottom:6px}
+label small{font-weight:500;color:var(--muted)}
+textarea,input[type="text"],input[type="date"],input[type="time"],select{
+  width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:14px;font:inherit;color:var(--tinta);background:#fff;
+}
+textarea{min-height:118px;resize:vertical}
+textarea:focus,input:focus,select:focus{border-color:var(--cobalto);outline:3px solid #C9D2FF;outline-offset:1px}
+.counter{text-align:right;color:var(--muted);font-size:13px;margin-top:6px}
+.counter.over{color:var(--barro);font-weight:700}
+.two{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}
+.drop{
+  border:2px dashed var(--line);border-radius:16px;padding:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+  background:#FBFCFF;
+}
+.thumb{width:56px;height:56px;border-radius:12px;border:1px solid var(--line)}
+.t1{background:linear-gradient(160deg,#F2A900,#2440E0)}
+.t2{background:linear-gradient(160deg,#8B7CFF,#0E1A2B)}
+.schedule{display:grid;grid-template-columns:1.15fr .8fr .85fr;gap:10px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.actions .btn{flex:1}
+.actions .primary{flex:1.2}
+.status-msg{margin:12px 0 0;font-weight:700;color:#0F6B3E;display:none}
+.status-msg.show{display:block}
+/* Preview */
+.preview-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.preview-pick{display:flex;gap:6px;flex-wrap:wrap}
+.pv{appearance:none;border:2px solid var(--line);background:#fff;border-radius:999px;padding:7px 11px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.pv[aria-pressed="true"]{border-color:var(--tinta);background:var(--tinta);color:#fff}
+.phone{margin-top:16px;border:2px solid var(--tinta);border-radius:20px;overflow:hidden;background:#fff}
+.phone-head{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.phone-head strong{font-size:15px}
+.phone-img{height:280px;background:linear-gradient(165deg,#F2A900 0%,#C76A3E 42%,#2440E0 100%)}
+.phone-body{padding:14px}
+.phone-body strong{display:block;margin-bottom:4px}
+.phone-body p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;max-width:60ch}
+.phone-body .tags{color:var(--muted);margin-top:6px}
+.phone-body .cta{margin-top:10px;display:inline-block;padding:9px 13px;border-radius:999px;background:var(--tinta);color:#fff;font-weight:700;font-size:14px}
+.fact{margin:12px 0 0;color:var(--muted);font-size:14px}
+.fact.bad{color:var(--barro);font-weight:700}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+@media (max-width:980px){
+  .layout{grid-template-columns:1fr}
+  .rail{position:static;height:auto}
+  main{padding:20px 16px 32px}
+  .editor{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .two,.schedule{grid-template-columns:1fr}
+  .actions .btn{flex:1 1 100%}
+  .phone-img{height:220px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+<div class="layout">
+  <aside class="rail" aria-label="Navegação principal">
+    <div>
+      <a class="brand" href="#">Posta<em>ê</em></a>
+      <p>Agenda de posts para Studio Aurora.</p>
+    </div>
+    <nav aria-label="Seções">
+      <a href="#">Dashboard</a>
+      <a href="#" aria-current="page">Criar post</a>
+      <a href="#">Calendário</a>
+      <a href="#">Biblioteca</a>
+      <a href="#">Publicações</a>
+      <a href="#">Análises</a>
+      <a href="#">Configurações</a>
+    </nav>
+    <div class="workspace"><small>Workspace</small><strong>Studio Aurora</strong></div>
+  </aside>
+
+  <main id="conteudo">
+    <div class="top">
+      <div>
+        <h1>Criar post</h1>
+        <p class="lede">Escreva uma vez e ajuste por rede quando precisar. O preview mostra cada versão antes de agendar.</p>
+      </div>
+      <span class="chip" id="draftChip">Rascunho</span>
+    </div>
+
+    <div class="editor">
+      <section class="panel" aria-labelledby="conteudo-titulo">
+        <h2 id="conteudo-titulo">Conteúdo</h2>
+        <p class="hint">Selecione onde publicar. Use as abas para manter uma legenda diferente para cada rede.</p>
+
+        <div class="netpick" role="group" aria-label="Redes selecionadas">
+          <button class="pick" type="button" aria-pressed="true" data-net="ig"><span class="net ig">IG</span> Instagram <span class="check" aria-hidden="true">✓</span></button>
+          <button class="pick" type="button" aria-pressed="true" data-net="fb"><span class="net fb">FB</span> Facebook <span class="check" aria-hidden="true">✓</span></button>
+          <button class="pick" type="button" aria-pressed="true" data-net="th"><span class="net th">TH</span> Threads <span class="check" aria-hidden="true">✓</span></button>
+          <button class="pick" type="button" aria-pressed="true" data-net="tt"><span class="net tt">TT</span> TikTok <span class="check" aria-hidden="true">✓</span></button>
+          <button class="pick" type="button" aria-pressed="false" data-net="yt"><span class="net yt">YT</span> YouTube</button>
+          <button class="pick" type="button" aria-pressed="true" data-net="x"><span class="net x">X</span> X <span class="check" aria-hidden="true">✓</span></button>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Legenda por rede">
+          <button class="tab" type="button" role="tab" aria-selected="true" data-tab="all">Todas</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="ig">Instagram</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="fb">Facebook</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="th">Threads</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="tt">TikTok</button>
+          <button class="tab" type="button" role="tab" aria-selected="false" data-tab="x">X</button>
+        </div>
+
+        <div class="field">
+          <label for="caption">Legenda <small id="captionFor">— valendo para todas as redes</small></label>
+          <textarea id="caption" maxlength="2000">Nova coleção chegando. Vem ver os bastidores!</textarea>
+          <p class="counter" id="counter">46 / 280 (limite do X)</p>
+        </div>
+
+        <div class="two">
+          <div class="field">
+            <label for="media">Mídia</label>
+            <div class="drop" id="drop">
+              <div class="thumb t1" aria-hidden="true"></div>
+              <div class="thumb t2" aria-hidden="true"></div>
+              <span>Arraste imagens ou vídeos<br><small style="color:var(--muted)">JPG, PNG, WEBP, GIF, MP4, MOV, WEBM</small></span>
+            </div>
+          </div>
+          <div>
+            <div class="field">
+              <label for="tags">Hashtags</label>
+              <input id="tags" type="text" value="#lançamento #moda" />
+            </div>
+            <div class="field">
+              <label for="cta">Chamada</label>
+              <input id="cta" type="text" value="Saiba mais" />
+            </div>
+          </div>
+        </div>
+
+        <div class="schedule" style="margin-top:16px">
+          <div class="field" style="margin-top:0">
+            <label for="date">Data</label>
+            <input id="date" type="text" value="15/12/2026" inputmode="numeric" />
+          </div>
+          <div class="field" style="margin-top:0">
+            <label for="time">Hora</label>
+            <input id="time" type="text" value="19:30" inputmode="numeric" />
+          </div>
+          <div class="field" style="margin-top:0">
+            <label for="tz">Fuso horário</label>
+            <select id="tz">
+              <option selected>GMT-3</option><option>GMT-4</option><option>GMT-5</option><option>GMT+0</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="button" id="saveBtn">Salvar rascunho</button>
+          <button class="btn" type="button" id="nowBtn">Publicar agora</button>
+          <button class="btn primary" type="button" id="scheduleBtn">Agendar</button>
+        </div>
+        <p class="status-msg" id="statusMsg" role="status"></p>
+      </section>
+
+      <aside class="panel" aria-labelledby="preview-titulo">
+        <div class="preview-head">
+          <h2 id="preview-titulo">Preview</h2>
+          <div class="preview-pick" role="group" aria-label="Rede do preview">
+            <button class="pv" type="button" aria-pressed="true" data-pv="ig">Instagram</button>
+            <button class="pv" type="button" aria-pressed="false" data-pv="fb">Facebook</button>
+            <button class="pv" type="button" aria-pressed="false" data-pv="th">Threads</button>
+            <button class="pv" type="button" aria-pressed="false" data-pv="tt">TikTok</button>
+            <button class="pv" type="button" aria-pressed="false" data-pv="x">X</button>
+          </div>
+        </div>
+        <p class="hint">O preview acompanha a legenda da aba ativa.</p>
+        <div class="phone">
+          <div class="phone-head"><span class="net ig" id="pvBadge">IG</span><strong id="pvHandle">studioaurora</strong></div>
+          <div class="phone-img" aria-hidden="true"></div>
+          <div class="phone-body">
+            <strong id="pvName">studioaurora</strong>
+            <p id="pvCaption">Nova coleção chegando. Vem ver os bastidores!</p>
+            <p class="tags" id="pvTags">#lançamento #moda</p>
+            <span class="cta" id="pvCta">Saiba mais</span>
+          </div>
+        </div>
+        <p class="fact" id="fact">Formato verificado: 1080×1350 · legenda dentro do limite</p>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script>
+const captions = {
+  all: "Nova coleção chegando. Vem ver os bastidores!",
+  ig: "Nova coleção chegando. Vem ver os bastidores!",
+  fb: "Nova coleção chegando — vem ver os bastidores!",
+  th: "Nova coleção a caminho. Bastidores no ar.",
+  tt: "Pov: a nova coleção chegou 👀 Vem ver os bastidores",
+  x: "Nova coleção chegando. Vem ver os bastidores!"
+};
+const handles = {ig:["IG","studioaurora"], fb:["FB","Studio Aurora"], th:["TH","studioaurora"], tt:["TT","aurora.studio"], x:["X","aurora_studio"]};
+const badgeClass = {ig:"net ig", fb:"net fb", th:"net th", tt:"net tt", x:"net x"};
+let activeTab = "all", previewNet = "ig";
+const captionEl = document.getElementById("caption");
+const counterEl = document.getElementById("counter");
+const captionFor = document.getElementById("captionFor");
+const pvBadge = document.getElementById("pvBadge");
+const pvHandle = document.getElementById("pvHandle");
+const pvName = document.getElementById("pvName");
+const pvCaption = document.getElementById("pvCaption");
+const pvTags = document.getElementById("pvTags");
+const pvCta = document.getElementById("pvCta");
+const fact = document.getElementById("fact");
+const tabNames = {all:"Todas", ig:"Instagram", fb:"Facebook", th:"Threads", tt:"TikTok", x:"X"};
+
+function render(){
+  captionEl.value = captions[activeTab];
+  captionFor.textContent = activeTab === "all" ? "— valendo para todas as redes" : "— edição só de " + tabNames[activeTab];
+  pvCaption.textContent = captions[activeTab] || "Escreva uma legenda para ver o preview.";
+  pvBadge.textContent = handles[previewNet][0];
+  pvBadge.className = badgeClass[previewNet];
+  pvHandle.textContent = handles[previewNet][1];
+  pvName.textContent = handles[previewNet][1];
+  pvTags.textContent = document.getElementById("tags").value;
+  pvCta.textContent = document.getElementById("cta").value || "Saiba mais";
+  const n = captionEl.value.length;
+  counterEl.textContent = n + " / 280 (limite do X)";
+  counterEl.classList.toggle("over", n > 280);
+  const over = previewNet === "x" && n > 280;
+  fact.textContent = over ? "Legenda acima do limite do X — corte  " + (n-280) + " caracteres" : "Formato verificado: 1080×1350 · legenda dentro do limite";
+  fact.classList.toggle("bad", over);
+}
+captionEl.addEventListener("input", () => { captions[activeTab] = captionEl.value; render(); });
+document.getElementById("tags").addEventListener("input", render);
+document.getElementById("cta").addEventListener("input", render);
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected","false"));
+  t.setAttribute("aria-selected","true"); activeTab = t.dataset.tab; render();
+}));
+document.querySelectorAll(".pv").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".pv").forEach(x => x.setAttribute("aria-pressed","false"));
+  b.setAttribute("aria-pressed","true"); previewNet = b.dataset.pv; render();
+}));
+document.querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => {
+  const on = b.getAttribute("aria-pressed") === "true";
+  b.setAttribute("aria-pressed", String(!on));
+  const check = b.querySelector(".check");
+  if(!on && !check){ const s = document.createElement("span"); s.className="check"; s.setAttribute("aria-hidden","true"); s.textContent="✓"; b.appendChild(s); }
+  if(on && check) check.remove();
+}));
+function announce(msg){
+  const el = document.getElementById("statusMsg");
+  el.textContent = msg; el.classList.add("show");
+  const chip = document.getElementById("draftChip");
+  chip.textContent = msg; chip.classList.add("saved");
+}
+document.getElementById("saveBtn").addEventListener("click", () => announce("Rascunho salvo."));
+document.getElementById("nowBtn").addEventListener("click", () => announce("Publicando agora nas redes selecionadas."));
+document.getElementById("scheduleBtn").addEventListener("click", () => {
+  const d = document.getElementById("date").value, t = document.getElementById("time").value, tz = document.getElementById("tz").value;
+  announce("Agendado para " + d + " às " + t + " (" + tz + ").");
+});
+render();
+</script>
+</body>
+</html>

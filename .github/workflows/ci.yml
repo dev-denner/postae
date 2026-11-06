@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci
+      - name: Gerar Prisma Client
+        run: npx prisma generate --schema apps/api/prisma/schema.prisma
+      - name: Typecheck API
+        run: npx tsc -p apps/api/tsconfig.json --noEmit
+      - name: Typecheck Web
+        run: npx tsc -p apps/web/tsconfig.json --noEmit
+      - name: Build API
+        run: npm run build --workspace=apps/api
+      - name: Build Web
+        run: npm run build --workspace=apps/web
+      - name: Testes API
+        run: npm run test --workspace=apps/api --if-present
+      - name: Docker build API
+        run: docker build -t postae-api ./apps/api
+      - name: Docker build Web
+        run: docker build -t postae-web ./apps/web
