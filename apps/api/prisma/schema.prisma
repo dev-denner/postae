@@ -64,6 +64,11 @@ enum MediaStatus {
   FAILED
 }
 
+enum MediaStorageDriver {
+  EXTERNAL
+  LOCAL
+}
+
 model User {
   id            String         @id @default(cuid())
   email         String         @unique
@@ -142,24 +147,30 @@ model SocialAuthSession {
 }
 
 model Media {
-  id          String      @id @default(cuid())
-  workspaceId String
-  userId      String
-  kind        MediaKind
-  status      MediaStatus @default(READY)
-  mimeType    String
-  url         String
-  originalUrl String?
-  width       Int?
-  height      Int?
-  durationSec Int?
-  sizeBytes   Int
-  folder      String?
-  tags        String[]
-  publicId    String?
-  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz
-  posts       PostMedia[]
+  id            String              @id @default(cuid())
+  workspaceId   String
+  userId        String
+  kind          MediaKind
+  status        MediaStatus         @default(READY)
+  mimeType      String
+  url           String              @default("")
+  originalUrl   String?
+  // EXTERNAL = URL informada pelo usuário; LOCAL = upload no storage local.
+  storageDriver MediaStorageDriver  @default(EXTERNAL)
+  // Caminho relativo dentro do diretório de uploads (apenas LOCAL).
+  storageKey    String?
+  originalName  String?
+  checksum      String?
+  width         Int?
+  height        Int?
+  durationSec   Int?
+  sizeBytes     Int
+  folder        String?
+  tags          String[]
+  publicId      String?
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  posts         PostMedia[]
 }
 
 model Post {

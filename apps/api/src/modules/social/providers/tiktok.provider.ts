@@ -9,7 +9,16 @@ import {
   RefreshTokenInput,
   SocialProviderAdapter,
 } from './provider.types';
-import { envValue, providerRequest, secondsFromNow, splitScopes, truncate } from './http.util';
+import {
+  envValue,
+  providerRequest,
+  providerRequestRaw,
+  readMediaBytes,
+  requirePublicMediaUrl,
+  secondsFromNow,
+  splitScopes,
+  truncate,
+} from './http.util';
 
 const AUTHORIZE_URL = 'https://www.tiktok.com/v2/auth/authorize/';
 const TOKEN_URL = 'https://open.tiktokapis.com/v2/oauth/token/';
@@ -29,7 +38,7 @@ export class TikTokProvider implements SocialProviderAdapter {
   readonly mediaSupport = { text: false, image: false, video: true, carousel: false };
   readonly limitations = [
     'A API de publicação do TikTok aceita vídeo; fotos ainda não estão habilitadas nesta versão.',
-    'O vídeo precisa estar em URL pública cujo domínio/prefixo foi verificado no portal do TikTok.',
+    'O vídeo pode ser enviado diretamente (FILE_UPLOAD) ou por URL pública verificada (PULL_FROM_URL).',
     'Enquanto o app não passa pela auditoria do TikTok, publicações ficam em SELF_ONLY (somente o criador vê) e a conta precisa ser privada.',
     'Há limites de posts por criador em 24h (tipicamente cerca de 15) e limite de criadores ativos por app.',
     'O access token dura cerca de 2 horas e o refresh token cerca de 180 dias, com rotação a cada renovação.',
@@ -37,7 +46,7 @@ export class TikTokProvider implements SocialProviderAdapter {
   readonly approvalNotes = [
     'É necessário registrar um app no TikTok for Developers, adicionar o produto Content Posting API e ser aprovado para o escopo video.publish.',
     'Publicação pública exige auditoria de conformidade do cliente (Content Posting API audit).',
-    'A verificação de propriedade da URL de mídia é obrigatória para usar PULL_FROM_URL.',
+    'A verificação de propriedade da URL só é necessária ao usar PULL_FROM_URL; uploads locais usam FILE_UPLOAD.',
   ];
   readonly requiredEnv = ['TIKTOK_CLIENT_KEY (ou TIKTOK_CLIENT_ID)', 'TIKTOK_CLIENT_SECRET'];
 
@@ -210,8 +219,33 @@ export class TikTokProvider implements SocialProviderAdapter {
       2200,
     );
 
+    // Upload direto oficial (FILE_UPLOAD) quando a mídia veio do nosso storage.
+    // Para mídia externa, mantém PULL_FROM_URL (exige domínio verificado).
+    let videoBytes: Buffer | undefined;
+    let chunkSize = 0;
+    let totalChunkCount = 0;
+    let sourceInfo: Record<string, unknown>;
+    if (video.filePath) {
+      videoBytes = (await readMediaBytes(this.key, video)).buffer;
+      const size = videoBytes.length;
+      const fiveMb = 5 * 1024 * 1024;
+      chunkSize = size < fiveMb ? size : Math.min(10 * 1024 * 1024, size);
+      totalChunkCount = Math.max(1, Math.ceil(size / chunkSize));
+      sourceInfo = {
+        source: 'FILE_UPLOAD',
+        video_size: size,
+        chunk_size: chunkSize,
+        total_chunk_count: totalChunkCount,
+      };
+    } else {
+      sourceInfo = {
+        source: 'PULL_FROM_URL',
+        video_url: requirePublicMediaUrl(video, 'TikTok'),
+      };
+    }
+
     const initialized = await providerRequest<{
-      data?: { publish_id?: string };
+      data?: { publish_id?: string; upload_url?: string };
       error?: { code?: string; message?: string };
     }>(this.key, 'Inicialização da publicação no TikTok', {
       method: 'POST',
@@ -229,10 +263,7 @@ export class TikTokProvider implements SocialProviderAdapter {
           disable_stitch: false,
           video_cover_timestamp_ms: 1000,
         },
-        source_info: {
-          source: 'PULL_FROM_URL',
-          video_url: video.url,
-        },
+        source_info: sourceInfo,
       },
     });
 
@@ -240,7 +271,21 @@ export class TikTokProvider implements SocialProviderAdapter {
     if (!publishId) {
       throw new Error(
         initialized.error?.message ||
-          'O TikTok não retornou o identificador da publicação. Verifique a verificação de domínio da URL do vídeo.',
+          'O TikTok não retornou o identificador da publicação. Verifique as permissões e o formato do vídeo.',
+      );
+    }
+
+    if (videoBytes) {
+      const uploadUrl = initialized.data?.upload_url;
+      if (!uploadUrl) {
+        throw new Error('O TikTok não retornou a URL de upload do vídeo.');
+      }
+      await this.uploadChunks(
+        uploadUrl,
+        videoBytes,
+        chunkSize,
+        totalChunkCount,
+        video.mimeType || 'video/mp4',
       );
     }
 
@@ -266,6 +311,36 @@ export class TikTokProvider implements SocialProviderAdapter {
       }).toString(),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     }).catch(() => undefined);
+  }
+
+  private async uploadChunks(
+    uploadUrl: string,
+    buffer: Buffer,
+    chunkSize: number,
+    totalChunks: number,
+    mimeType: string,
+  ): Promise<void> {
+    for (let index = 0; index < totalChunks; index += 1) {
+      const start = index * chunkSize;
+      const end = Math.min(start + chunkSize, buffer.length) - 1;
+      const chunk = buffer.subarray(start, end + 1);
+      await providerRequestRaw(
+        this.key,
+        `Envio do bloco ${index + 1}/${totalChunks} ao TikTok`,
+        {
+          method: 'PUT',
+          url: uploadUrl,
+          headers: {
+            'Content-Type': mimeType,
+            'Content-Length': String(chunk.length),
+            'Content-Range': `bytes ${start}-${end}/${buffer.length}`,
+          },
+          data: chunk,
+          timeout: 180_000,
+          maxBodyLength: Infinity,
+        },
+      );
+    }
   }
 
   private async waitForPublish(publishId: string, accessToken: string): Promise<string> {

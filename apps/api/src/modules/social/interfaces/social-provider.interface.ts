@@ -16,6 +16,12 @@ export interface MediaPayload {
   mimeType: string;
   width?: number;
   height?: number;
+  durationSec?: number;
+  /** Caminho absoluto no storage local, quando a mídia foi enviada por upload. */
+  filePath?: string;
+  /** Nome original, usado para nomear o arquivo no upload oficial da rede. */
+  filename?: string;
+  storageDriver?: 'LOCAL' | 'EXTERNAL';
 }
 
 export interface PublishInput {

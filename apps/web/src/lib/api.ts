@@ -9,6 +9,19 @@ import {
 const configuredBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
 export const apiBaseUrl = configuredBase ? `${configuredBase}/api` : '/api';
 
+/**
+ * Resolve URLs de mídia retornadas pela API. Em dev, sem VITE_API_URL, a URL
+ * relativa é servida pelo proxy do Vite. Em produção/servidor estático, usa a
+ * origem configurada da API para que os arquivos assinados continuem acessíveis.
+ */
+export function resolveMediaUrl(url: string | null | undefined): string {
+  const value = (url || '').trim();
+  if (!value) return '';
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  if (value.startsWith('/') && configuredBase) return `${configuredBase}${value}`;
+  return value;
+}
+
 export const api = axios.create({
   baseURL: apiBaseUrl,
   timeout: 30000,

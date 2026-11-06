@@ -10,7 +10,7 @@ import {
   RefreshTokenInput,
   SocialProviderAdapter,
 } from './provider.types';
-import { envValue, providerRequest, secondsFromNow, splitScopes } from './http.util';
+import { envValue, providerRequest, requirePublicMediaUrl, secondsFromNow, splitScopes } from './http.util';
 
 const AUTHORIZE_URL = 'https://www.instagram.com/oauth/authorize';
 const CODE_TOKEN_URL = 'https://api.instagram.com/oauth/access_token';
@@ -180,7 +180,7 @@ export class InstagramProvider implements SocialProviderAdapter {
             method: 'POST',
             url: `${graphBase()}/${igUserId}/media`,
             data: new URLSearchParams({
-              image_url: item.url,
+              image_url: requirePublicMediaUrl(item, 'Instagram'),
               is_carousel_item: 'true',
               access_token: accessToken,
             }).toString(),
@@ -214,10 +214,10 @@ export class InstagramProvider implements SocialProviderAdapter {
       });
       if (isVideo) {
         payload.set('media_type', 'REELS');
-        payload.set('video_url', item.url);
+        payload.set('video_url', requirePublicMediaUrl(item, 'Instagram'));
         payload.set('share_to_feed', 'true');
       } else {
-        payload.set('image_url', item.url);
+        payload.set('image_url', requirePublicMediaUrl(item, 'Instagram'));
       }
       const container = await providerRequest<{ id: string }>(
         this.key,

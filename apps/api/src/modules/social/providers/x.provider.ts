@@ -10,8 +10,15 @@ import {
   RefreshTokenInput,
   SocialProviderAdapter,
 } from './provider.types';
-import { envValue, providerRequest, secondsFromNow, splitScopes, truncate } from './http.util';
-import { assertSafePublicUrl } from '../../../common/utils/url-safety.util';
+import {
+  envValue,
+  fileNameForUpload,
+  providerRequest,
+  readMediaBytes,
+  secondsFromNow,
+  splitScopes,
+  truncate,
+} from './http.util';
 
 const AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
 const TOKEN_URL = 'https://api.x.com/2/oauth2/token';
@@ -206,14 +213,13 @@ export class XProvider implements SocialProviderAdapter {
   }
 
   private async uploadImage(item: MediaPayload, accessToken: string): Promise<string> {
-    await assertSafePublicUrl(item.url);
-    const imageResponse = await providerRequest<ArrayBuffer>(this.key, 'Download da imagem para o X', {
-      method: 'GET',
-      url: item.url,
-      responseType: 'arraybuffer',
-    });
+    const { buffer, filename } = await readMediaBytes(this.key, item);
     const form = new FormData();
-    form.append('media', new Blob([imageResponse], { type: item.mimeType || 'image/jpeg' }), 'media');
+    form.append(
+      'media',
+      new Blob([new Uint8Array(buffer)], { type: item.mimeType || 'image/jpeg' }),
+      fileNameForUpload(filename, item.mimeType || 'image/jpeg', 'media.jpg'),
+    );
     form.append('media_category', 'tweet_image');
     form.append('media_type', item.mimeType || 'image/jpeg');
 

@@ -11,12 +11,14 @@
     "dev": "npm run dev --workspace=apps/web",
     "dev:api": "npm run start:dev --workspace=apps/api",
     "build": "npm run build --workspaces --if-present",
-    "db:push": "npx prisma db push --schema apps/api/prisma/schema.prisma",
-    "db:seed": "npx prisma db seed --schema apps/api/prisma/schema.prisma",
-    "db:studio": "npx prisma studio --schema apps/api/prisma/schema.prisma"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspace=apps/api",
+    "db:push": "node ./scripts/run-bin.mjs prisma/build/index.js db push --schema apps/api/prisma/schema.prisma",
+    "db:seed": "node ./scripts/run-bin.mjs prisma/build/index.js db seed --schema apps/api/prisma/schema.prisma",
+    "db:studio": "node ./scripts/run-bin.mjs prisma/build/index.js studio --schema apps/api/prisma/schema.prisma"
   },
   "prisma": {
-    "seed": "ts-node --transpile-only apps/api/prisma/seed.ts"
+    "seed": "node ./scripts/run-bin.mjs ts-node/dist/bin.js --transpile-only apps/api/prisma/seed.ts"
   },
   "engines": {
     "node": ">=20"

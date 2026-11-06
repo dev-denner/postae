@@ -18,6 +18,7 @@ import {
   Send,
   Trash2,
   Twitter,
+  Upload,
   Video,
   Youtube,
   type LucideIcon,
@@ -27,7 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { api, getApiError } from '@/lib/api';
+import { api, getApiError, resolveMediaUrl } from '@/lib/api';
 import {
   accountHandle,
   PROVIDER_ORDER,
@@ -88,8 +89,10 @@ export function CreatePost() {
   const [postStatus, setPostStatus] = useState<string | null>(null);
   const [saving, setSaving] = useState<SaveTarget | null>(null);
   const [addingMedia, setAddingMedia] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hydrated = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const accountsQuery = useQuery({
     queryKey: ['social', 'accounts'],
@@ -139,6 +142,8 @@ export function CreatePost() {
   );
   const hasVideo = media.some((item) => item.kind === 'VIDEO');
   const hasImage = media.some((item) => item.kind === 'IMAGE');
+  const videoCount = media.filter((item) => item.kind === 'VIDEO').length;
+  const imageCount = media.filter((item) => item.kind === 'IMAGE').length;
   const missingMedia = selectedProviders.filter((provider) => MEDIA_REQUIRED.has(provider));
   const missingVideo = selectedProviders.filter((provider) => VIDEO_REQUIRED.has(provider));
   const readOnly = Boolean(postStatus && READ_ONLY_STATUSES.has(postStatus));
@@ -190,6 +195,29 @@ export function CreatePost() {
     }
   }
 
+  async function addMediaFiles(files: File[]) {
+    if (!files.length) return;
+    setUploadingMedia(true);
+    setError(null);
+    try {
+      const created: LocalMedia[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await api.post('/media/upload', formData, {
+          timeout: 10 * 60 * 1000,
+        });
+        created.push((response.data?.data ?? response.data) as LocalMedia);
+      }
+      setMedia((previous) => [...previous, ...created]);
+      await queryClient.invalidateQueries({ queryKey: ['media'] });
+    } catch (err) {
+      setError(getApiError(err, 'Não foi possível enviar a mídia.'));
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
   function validateForPublish(): string | null {
     if (!accountIds.length) return 'Selecione pelo menos uma conta conectada.';
     if (selectedAccounts.length !== accountIds.length) {
@@ -203,7 +231,7 @@ export function CreatePost() {
     }
     if (!text.trim()) return 'Escreva o texto ou a legenda da publicação.';
     if (missingMedia.length && !media.length) {
-      return `${missingMedia.map(providerLabel).join(', ')} exige mídia. Adicione uma imagem ou vídeo por URL pública.`;
+      return `${missingMedia.map(providerLabel).join(', ')} exige mídia. Adicione uma imagem ou vídeo na seção de mídia.`;
     }
     if (missingVideo.length && !hasVideo) {
       return `${missingVideo.map(providerLabel).join(', ')} exige vídeo. Adicione uma mídia do tipo vídeo.`;
@@ -213,6 +241,36 @@ export function CreatePost() {
     }
     if (selectedProviders.includes('INSTAGRAM') && !hasImage && !hasVideo) {
       return 'O Instagram exige uma imagem ou vídeo.';
+    }
+    if (selectedProviders.includes('INSTAGRAM') && media.length > 10) {
+      return 'O Instagram aceita no máximo 10 mídias por carrossel.';
+    }
+    if (selectedProviders.includes('TWITTER') && imageCount > 4) {
+      return 'O X aceita no máximo 4 imagens por publicação.';
+    }
+    if (selectedProviders.includes('THREADS') && media.length > 1) {
+      return 'O Threads aceita apenas uma mídia por publicação.';
+    }
+    if (selectedProviders.includes('FACEBOOK') && imageCount > 10) {
+      return 'O Facebook aceita no máximo 10 imagens por publicação.';
+    }
+    if (
+      selectedProviders.some((provider) => provider === 'TIKTOK' || provider === 'YOUTUBE') &&
+      videoCount > 1
+    ) {
+      return 'TikTok e YouTube aceitam apenas um vídeo por publicação.';
+    }
+    if (
+      selectedProviders.some((provider) => provider === 'TIKTOK' || provider === 'YOUTUBE') &&
+      hasImage
+    ) {
+      return 'TikTok e YouTube aceitam apenas vídeo. Remova as imagens da publicação.';
+    }
+    if (selectedProviders.includes('FACEBOOK') && hasVideo && hasImage) {
+      return 'O Facebook aceita vídeo ou imagens, mas não ambos na mesma publicação.';
+    }
+    if (selectedProviders.includes('FACEBOOK') && videoCount > 1) {
+      return 'O Facebook aceita apenas um vídeo por publicação.';
     }
     return null;
   }
@@ -513,7 +571,7 @@ export function CreatePost() {
                       <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-md bg-muted">
                         {item.kind === 'IMAGE' ? (
                           <img
-                            src={item.url}
+                            src={resolveMediaUrl(item.url)}
                             alt=""
                             className="h-full w-full object-cover"
                             onError={(event) => {
@@ -525,9 +583,11 @@ export function CreatePost() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium">{item.mimeType}</p>
+                        <p className="truncate text-xs font-medium">
+                          {item.originalName || item.mimeType}
+                        </p>
                         <a
-                          href={item.url}
+                          href={resolveMediaUrl(item.url)}
                           target="_blank"
                           rel="noreferrer"
                           className="block truncate text-[11px] text-muted-foreground hover:underline"
@@ -551,7 +611,40 @@ export function CreatePost() {
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Adicionar mídia por URL pública</label>
+                <label className="text-sm font-medium">Enviar arquivo do computador</label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+                    className="hidden"
+                    onChange={(event) => {
+                      const files = Array.from(event.target.files ?? []);
+                      event.target.value = '';
+                      void addMediaFiles(files);
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingMedia}
+                  >
+                    {uploadingMedia ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    {uploadingMedia ? 'Enviando...' : 'Selecionar arquivos'}
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    JPEG, PNG, WebP, GIF, MP4, MOV ou WebM
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ou adicionar mídia por URL pública</label>
                 <div className="flex flex-wrap gap-2">
                   <Input
                     className="min-w-[220px] flex-1"
@@ -577,8 +670,9 @@ export function CreatePost() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Upload direto ainda não está implementado. A URL precisa ser pública e acessível
-                  pelas plataformas. Endereços locais ou de rede interna são bloqueados.
+                  Uploads locais ficam em storage persistente com acesso por URL assinada. Instagram
+                  e Threads ainda exigem MEDIA_PUBLIC_BASE_URL público para buscar a mídia; as demais
+                  redes usam upload oficial direto. URLs externas continuam aceitas.
                 </p>
               </div>
 
@@ -620,7 +714,7 @@ export function CreatePost() {
                 <div className="overflow-hidden rounded-[1.5rem] bg-white">
                   {hasImage ? (
                     <img
-                      src={media.find((item) => item.kind === 'IMAGE')?.url}
+                      src={resolveMediaUrl(media.find((item) => item.kind === 'IMAGE')?.url)}
                       alt=""
                       className="aspect-[4/5] w-full object-cover"
                     />

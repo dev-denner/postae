@@ -1,6 +1,9 @@
 FROM node:20-alpine AS build
 WORKDIR /app
+# .npmrc libera apenas scripts de instalação confiáveis (esbuild).
+COPY .npmrc ./
 COPY package*.json ./
+COPY scripts ./scripts
 COPY apps/web/package.json ./apps/web/
 RUN npm install --prefix apps/web
 COPY apps/web ./apps/web

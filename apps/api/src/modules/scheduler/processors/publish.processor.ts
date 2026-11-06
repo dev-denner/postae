@@ -3,6 +3,7 @@ import { Job, Worker } from 'bullmq';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { SocialService, SocialPublishError } from '../../social/social.service';
 import { MediaPayload, PostContent } from '../../social/interfaces/social-provider.interface';
+import { MediaStorageService } from '../../media/media-storage.service';
 import {
   PUBLISH_QUEUE,
   REDIS_CONNECTION,
@@ -21,6 +22,7 @@ export class PublishProcessor implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly prisma: PrismaService,
     private readonly socialService: SocialService,
+    private readonly mediaStorage: MediaStorageService,
     @Inject(REDIS_CONNECTION) private readonly redisConfig: RedisConnectionConfig,
   ) {}
 
@@ -205,14 +207,22 @@ export class PublishProcessor implements OnModuleInit, OnModuleDestroy {
         where: { id: { in: post.mediaIds }, workspaceId: post.workspaceId },
       });
     }
-    return records.map((media: any) => ({
-      id: media.id,
-      kind: media.kind === 'VIDEO' ? 'VIDEO' : 'IMAGE',
-      url: media.url,
-      mimeType: media.mimeType,
-      width: media.width ?? undefined,
-      height: media.height ?? undefined,
-    }));
+    return records.map((media: any) => {
+      const isLocal = media.storageDriver === 'LOCAL' && media.storageKey;
+      return {
+        id: media.id,
+        kind: media.kind === 'VIDEO' ? 'VIDEO' : 'IMAGE',
+        // Local: URL assinada e temporária. Externo: URL cadastrada.
+        url: isLocal ? this.mediaStorage.signedUrl(media.id) : media.url,
+        filePath: isLocal ? this.mediaStorage.localPath(media.storageKey) : undefined,
+        filename: media.originalName ?? undefined,
+        storageDriver: isLocal ? 'LOCAL' : 'EXTERNAL',
+        mimeType: media.mimeType,
+        width: media.width ?? undefined,
+        height: media.height ?? undefined,
+        durationSec: media.durationSec ?? undefined,
+      };
+    });
   }
 
   private async failDestination(

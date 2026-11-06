@@ -72,6 +72,9 @@ export function validateMediaForPlatform(
 ): { ok: boolean; errors: string[] } {
   const caps = (PLATFORM_CAPABILITIES as any)[platform] ?? PLATFORM_CAPABILITIES.TWITTER;
   const errors: string[] = [];
+  const videoCount = media.filter((m) => m.kind === 'VIDEO').length;
+  const imageCount = media.filter((m) => m.kind === 'IMAGE').length;
+
   for (const m of media) {
     const fmt = (m.mimeType || '').toUpperCase().split(';')[0];
     const base = fmt.replace(/^\w+\//, '');
@@ -88,5 +91,64 @@ export function validateMediaForPlatform(
       }
     }
   }
+
+  // Regras de quantidade/obrigatoriedade por destino.
+  switch (platform) {
+    case 'INSTAGRAM':
+      if (!media.length) {
+        errors.push('Instagram exige ao menos uma imagem ou vídeo.');
+      }
+      if (media.length > 10) {
+        errors.push('Instagram aceita no máximo 10 mídias por carrossel.');
+      }
+      break;
+    case 'FACEBOOK':
+      if (videoCount > 1) {
+        errors.push('Facebook aceita apenas um vídeo por publicação.');
+      }
+      if (videoCount > 0 && imageCount > 0) {
+        errors.push('Facebook aceita vídeo ou imagens, mas não ambos na mesma publicação.');
+      }
+      if (imageCount > 10) {
+        errors.push('Facebook aceita no máximo 10 imagens por publicação.');
+      }
+      break;
+    case 'THREADS':
+      if (media.length > 1) {
+        errors.push('Threads aceita apenas uma mídia por publicação.');
+      }
+      break;
+    case 'TWITTER':
+      if (videoCount > 0) {
+        errors.push('Vídeo ainda não está habilitado no X.');
+      }
+      if (imageCount > 4) {
+        errors.push('X aceita no máximo 4 imagens por publicação.');
+      }
+      break;
+    case 'TIKTOK':
+      if (videoCount === 0) {
+        errors.push('TikTok exige um vídeo.');
+      }
+      if (videoCount > 1) {
+        errors.push('TikTok aceita apenas um vídeo por publicação.');
+      }
+      if (imageCount > 0) {
+        errors.push('TikTok aceita apenas vídeo; remova as imagens.');
+      }
+      break;
+    case 'YOUTUBE':
+      if (videoCount === 0) {
+        errors.push('YouTube exige um vídeo.');
+      }
+      if (videoCount > 1) {
+        errors.push('YouTube aceita apenas um vídeo por publicação.');
+      }
+      if (imageCount > 0) {
+        errors.push('YouTube aceita apenas vídeo; remova as imagens.');
+      }
+      break;
+  }
+
   return { ok: errors.length === 0, errors };
 }

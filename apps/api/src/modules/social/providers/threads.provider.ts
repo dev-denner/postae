@@ -9,7 +9,7 @@ import {
   RefreshTokenInput,
   SocialProviderAdapter,
 } from './provider.types';
-import { envValue, providerRequest, secondsFromNow, splitScopes } from './http.util';
+import { envValue, providerRequest, requirePublicMediaUrl, secondsFromNow, splitScopes } from './http.util';
 
 const THREADS_GRAPH = 'https://graph.threads.net/v1.0';
 const AUTHORIZE_URL = 'https://threads.net/oauth/authorize';
@@ -159,10 +159,10 @@ export class ThreadsProvider implements SocialProviderAdapter {
     const payload = new URLSearchParams({ access_token: accessToken, text });
     if (video) {
       payload.set('media_type', 'VIDEO');
-      payload.set('video_url', video.url);
+      payload.set('video_url', requirePublicMediaUrl(video, 'Threads'));
     } else if (image) {
       payload.set('media_type', 'IMAGE');
-      payload.set('image_url', image.url);
+      payload.set('image_url', requirePublicMediaUrl(image, 'Threads'));
     } else {
       payload.set('media_type', 'TEXT');
     }

@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Film,
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { api, getApiError } from '@/lib/api';
+import { api, getApiError, resolveMediaUrl } from '@/lib/api';
 import { formatBytes } from '@/lib/utils';
 
 interface MediaItem {
@@ -29,15 +29,21 @@ interface MediaItem {
   sizeBytes: number;
   folder?: string;
   tags: string[];
+  originalName?: string;
+  storageDriver?: 'LOCAL' | 'EXTERNAL';
   createdAt?: string;
 }
 
 export function MediaLibrary() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [url, setUrl] = useState('');
   const [kind, setKind] = useState<'IMAGE' | 'VIDEO'>('IMAGE');
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(
+    null,
+  );
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null,
   );
@@ -72,6 +78,37 @@ export function MediaLibrary() {
       }),
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: async (files: File[]) => {
+      const created: MediaItem[] = [];
+      for (let index = 0; index < files.length; index += 1) {
+        setUploadProgress({ current: index + 1, total: files.length });
+        const formData = new FormData();
+        formData.append('file', files[index]);
+        const response = await api.post('/media/upload', formData, {
+          timeout: 10 * 60 * 1000,
+        });
+        created.push((response.data?.data ?? response.data) as MediaItem);
+      }
+      return created;
+    },
+    onSuccess: async (created) => {
+      setUploadProgress(null);
+      setNotice({
+        type: 'success',
+        message: `${created.length} ${created.length === 1 ? 'mídia enviada' : 'mídias enviadas'} para o storage local.`,
+      });
+      await queryClient.invalidateQueries({ queryKey: ['media'] });
+    },
+    onError: (error) => {
+      setUploadProgress(null);
+      setNotice({
+        type: 'error',
+        message: getApiError(error, 'Não foi possível enviar o arquivo.'),
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/media/${id}`);
@@ -94,6 +131,7 @@ export function MediaLibrary() {
     return items.filter(
       (item) =>
         item.mimeType.toLowerCase().includes(term) ||
+        item.originalName?.toLowerCase().includes(term) ||
         item.folder?.toLowerCase().includes(term) ||
         item.tags.some((tag) => tag.toLowerCase().includes(term)) ||
         item.url.toLowerCase().includes(term),
@@ -120,16 +158,38 @@ export function MediaLibrary() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Biblioteca de Mídia</h1>
           <p className="text-sm text-muted-foreground">
-            Mídias cadastradas por URL pública. O upload direto ainda não está implementado.
+            Envie arquivos do computador ou cadastre uma URL pública. Uploads ficam em storage
+            local persistente, com acesso por URL assinada e temporária.
           </p>
         </div>
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
+            className="hidden"
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? []);
+              event.target.value = '';
+              if (files.length) uploadMutation.mutate(files);
+            }}
+          />
           <Button
             variant="outline"
-            disabled
-            title="Upload direto depende de storage público integrado; use URL pública."
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadMutation.isPending}
           >
-            <Upload className="h-4 w-4" /> Upload indisponível
+            {uploadMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {uploadMutation.isPending
+              ? uploadProgress
+                ? `Enviando ${uploadProgress.current}/${uploadProgress.total}`
+                : 'Enviando...'
+              : 'Enviar arquivos'}
           </Button>
           <Button onClick={() => setShowForm((value) => !value)}>
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
@@ -226,7 +286,7 @@ export function MediaLibrary() {
         <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
           <ImagePlus className="mx-auto mb-3 h-10 w-10" />
           <p>Nenhuma mídia cadastrada.</p>
-          <p>Adicione uma URL pública para usar em publicações.</p>
+          <p>Envie um arquivo do computador ou adicione uma URL pública.</p>
         </div>
       )}
 
@@ -247,7 +307,7 @@ export function MediaLibrary() {
                   <>
                     <ImagePlus className="absolute h-10 w-10 text-muted-foreground" />
                     <img
-                      src={item.url}
+                      src={resolveMediaUrl(item.url)}
                       alt=""
                       className="relative h-full w-full object-cover"
                       onError={(event) => {
@@ -275,8 +335,8 @@ export function MediaLibrary() {
                   <Badge variant="outline">{item.status}</Badge>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">{item.mimeType}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.folder || 'Sem pasta'}
+                <p className="truncate text-xs text-muted-foreground">
+                  {item.originalName || item.folder || 'Sem pasta'}
                   {item.sizeBytes ? ` · ${formatBytes(item.sizeBytes)}` : ''}
                 </p>
                 {item.tags.length > 0 && (

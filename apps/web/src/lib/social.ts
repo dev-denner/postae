@@ -88,6 +88,8 @@ export interface PostMedia {
     height?: number;
     durationSec?: number;
     sizeBytes?: number;
+    originalName?: string;
+    storageDriver?: 'LOCAL' | 'EXTERNAL';
   };
 }
 

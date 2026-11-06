@@ -13,11 +13,11 @@ import {
   envValue,
   providerRequest,
   providerRequestRaw,
+  readMediaBytes,
   secondsFromNow,
   splitScopes,
   truncate,
 } from './http.util';
-import { assertSafePublicUrl } from '../../../common/utils/url-safety.util';
 
 const AUTHORIZE_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
@@ -169,12 +169,9 @@ export class YouTubeProvider implements SocialProviderAdapter {
     const caption = context.content.caption ?? context.content.text ?? '';
     const title = truncate(context.content.title || caption.split('\n')[0] || 'Publicação', 100);
 
-    await assertSafePublicUrl(video.url);
-    const videoBytes = await providerRequest<ArrayBuffer>(this.key, 'Download do vídeo para o YouTube', {
-      method: 'GET',
-      url: video.url,
-      responseType: 'arraybuffer',
-    });
+    const { buffer: videoBytes } = await readMediaBytes(this.key, video);
+    const mimeType = video.mimeType || 'video/mp4';
+    const contentLength = String(videoBytes.length);
 
     const init = await providerRequestRaw<unknown>(this.key, 'Inicialização do upload no YouTube', {
       method: 'POST',
@@ -183,8 +180,8 @@ export class YouTubeProvider implements SocialProviderAdapter {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json; charset=UTF-8',
-        'X-Upload-Content-Type': video.mimeType || 'video/mp4',
-        'X-Upload-Content-Length': String(Buffer.byteLength(Buffer.from(videoBytes))),
+        'X-Upload-Content-Type': mimeType,
+        'X-Upload-Content-Length': contentLength,
       },
       data: {
         snippet: {
@@ -208,10 +205,11 @@ export class YouTubeProvider implements SocialProviderAdapter {
       method: 'PUT',
       url: String(uploadUrl),
       headers: {
-        'Content-Type': video.mimeType || 'video/mp4',
-        'Content-Length': String(Buffer.byteLength(Buffer.from(videoBytes))),
+        'Content-Type': mimeType,
+        'Content-Length': contentLength,
       },
-      data: Buffer.from(videoBytes),
+      data: videoBytes,
+      timeout: 300_000,
     });
 
     return {

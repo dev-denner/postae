@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { SocialModule } from '../social/social.module';
+import { MediaModule } from '../media/media.module';
 import { SchedulerService } from './scheduler.service';
 import { PublishProcessor } from './processors/publish.processor';
 import {
@@ -42,7 +43,7 @@ function redisConfiguration(): RedisConnectionConfig {
 }
 
 @Module({
-  imports: [PrismaModule, SocialModule],
+  imports: [PrismaModule, SocialModule, MediaModule],
   providers: [
     {
       provide: REDIS_CONNECTION,

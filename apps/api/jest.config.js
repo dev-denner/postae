@@ -5,6 +5,6 @@ module.exports = {
   transform: {
     '^.+\\.(t|j)s$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
-  collectCoverageFrom: ['**/*.{is,ts}', '!**/*.d.ts', '!**/node_modules/**', '!**/dist/**'],
+  collectCoverageFrom: ['**/*.{js,ts}', '!**/*.d.ts', '!**/node_modules/**', '!**/dist/**'],
   testEnvironment: 'node',
 };

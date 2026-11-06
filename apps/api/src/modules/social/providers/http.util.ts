@@ -1,5 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { promises as fs } from 'fs';
 import { SocialProviderKey } from '../../../common/constants/app.constants';
+import { assertSafePublicUrl } from '../../../common/utils/url-safety.util';
+import { MediaPayload } from '../interfaces/social-provider.interface';
 
 export class SocialApiError extends Error {
   constructor(
@@ -119,4 +122,66 @@ export function splitScopes(scope?: string | string[]): string[] {
 export function truncate(value: string | undefined | null, max: number): string {
   if (!value) return '';
   return value.length > max ? `${value.slice(0, Math.max(0, max - 3))}...` : value;
+}
+
+export interface MediaBytes {
+  buffer: Buffer;
+  filename: string;
+}
+
+/**
+ * Obtém os bytes de uma mídia para upload oficial direto.
+ * Prioriza o arquivo local (uploads) e só baixa URL externa após validar
+ * que ela é pública (proteção contra SSRF).
+ */
+export async function readMediaBytes(
+  provider: SocialProviderKey,
+  media: MediaPayload,
+): Promise<MediaBytes> {
+  const filename = media.filename || `midia-${media.id}`;
+  if (media.filePath) {
+    return { buffer: await fs.readFile(media.filePath), filename };
+  }
+  await assertSafePublicUrl(media.url);
+  const response = await providerRequestRaw<ArrayBuffer>(provider, 'Download de mídia', {
+    method: 'GET',
+    url: media.url,
+    responseType: 'arraybuffer',
+    timeout: 120_000,
+  });
+  return { buffer: Buffer.from(response.data), filename };
+}
+
+/**
+ * Redes que buscam a mídia por URL (Instagram/Threads) precisam de endereço
+ * absoluto e público. Uploads locais sem MEDIA_PUBLIC_BASE_URL não servem.
+ */
+export function requirePublicMediaUrl(media: MediaPayload, platform: string): string {
+  if (!/^https?:\/\//i.test(media.url || '')) {
+    throw new Error(
+      `${platform} exige que a mídia esteja em uma URL pública. Configure MEDIA_PUBLIC_BASE_URL com um endereço acessível pela internet ou use uma mídia externa.`,
+    );
+  }
+  return media.url;
+}
+
+const EXTENSION_BY_MIME: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'video/mp4': '.mp4',
+  'video/quicktime': '.mov',
+  'video/webm': '.webm',
+};
+
+/** Garante extensão no nome enviado no multipart oficial da rede. */
+export function fileNameForUpload(
+  filename: string,
+  mimeType: string,
+  fallback = 'midia',
+): string {
+  const safe = (filename || fallback).split(/[\\/]/).pop() || fallback;
+  if (/\.[a-z0-9]{2,5}$/i.test(safe)) return safe;
+  return `${safe}${EXTENSION_BY_MIME[(mimeType || '').toLowerCase()] || ''}`;
 }

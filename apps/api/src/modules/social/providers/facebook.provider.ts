@@ -9,7 +9,7 @@ import {
   ProviderPublishResult,
   SocialProviderAdapter,
 } from './provider.types';
-import { envValue, providerRequest, secondsFromNow, splitScopes } from './http.util';
+import { envValue, fileNameForUpload, providerRequest, readMediaBytes, secondsFromNow, splitScopes } from './http.util';
 
 function graphBase(): string {
   const version = envValue('META_GRAPH_VERSION') || 'v26.0';
@@ -32,7 +32,7 @@ export class FacebookProvider implements SocialProviderAdapter {
     'A API publica somente em Páginas do Facebook; perfis pessoais não são suportados pela Meta.',
     'Cada Página autorizada vira uma conta separada no Postaê, permitindo escolher destinos.',
     'O token da Página é derivado da autorização do usuário e pode ser invalidado a qualquer momento.',
-    'Mídias precisam estar em URL pública acessível pela Meta.',
+    'Imagens e vídeos locais são enviados diretamente à Meta; não é necessário hospedar a mídia publicamente.',
   ];
   readonly approvalNotes = [
     'A produção exige App Review para pages_show_list, pages_read_engagement e pages_manage_posts.',
@@ -147,20 +147,27 @@ export class FacebookProvider implements SocialProviderAdapter {
     const accessToken = context.account.accessToken;
     const message = context.content.caption ?? context.content.text ?? '';
     const link = context.content.link;
-    const media = context.media.filter((item) => item.url);
+    const media = context.media;
     const video = media.find((item) => item.kind === 'VIDEO');
     const images = media.filter((item) => item.kind === 'IMAGE');
 
+    // Upload direto do arquivo local via multipart (oficial da Graph API).
+    // Evita depender de URL pública para vídeos e fotos.
     if (video) {
+      const { buffer, filename } = await readMediaBytes(this.key, video);
+      const form = new FormData();
+      form.append(
+        'source',
+        new Blob([new Uint8Array(buffer)], { type: video.mimeType || 'video/mp4' }),
+        fileNameForUpload(filename, video.mimeType || 'video/mp4', 'video.mp4'),
+      );
+      form.append('description', message);
+      form.append('access_token', accessToken);
       const result = await providerRequest<{ id: string }>(this.key, 'Publicação de vídeo no Facebook', {
         method: 'POST',
         url: `${graphBase()}/${pageId}/videos`,
-        data: new URLSearchParams({
-          file_url: video.url,
-          description: message,
-          access_token: accessToken,
-        }).toString(),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        data: form,
+        timeout: 180_000,
       });
       return { externalPostId: result.id, status: 'PUBLISHED' };
     }
@@ -168,18 +175,23 @@ export class FacebookProvider implements SocialProviderAdapter {
     if (images.length > 1) {
       const mediaIds: string[] = [];
       for (const image of images.slice(0, 10)) {
+        const { buffer, filename } = await readMediaBytes(this.key, image);
+        const form = new FormData();
+        form.append(
+          'source',
+          new Blob([new Uint8Array(buffer)], { type: image.mimeType || 'image/jpeg' }),
+          fileNameForUpload(filename, image.mimeType || 'image/jpeg', 'image.jpg'),
+        );
+        form.append('published', 'false');
+        form.append('access_token', accessToken);
         const uploaded = await providerRequest<{ id: string }>(
           this.key,
           'Upload de foto para o Facebook',
           {
             method: 'POST',
             url: `${graphBase()}/${pageId}/photos`,
-            data: new URLSearchParams({
-              url: image.url,
-              published: 'false',
-              access_token: accessToken,
-            }).toString(),
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: form,
+            timeout: 120_000,
           },
         );
         mediaIds.push(uploaded.id);
@@ -198,15 +210,20 @@ export class FacebookProvider implements SocialProviderAdapter {
     }
 
     if (images.length === 1) {
+      const { buffer, filename } = await readMediaBytes(this.key, images[0]);
+      const form = new FormData();
+      form.append(
+        'source',
+        new Blob([new Uint8Array(buffer)], { type: images[0].mimeType || 'image/jpeg' }),
+        fileNameForUpload(filename, images[0].mimeType || 'image/jpeg', 'image.jpg'),
+      );
+      form.append('caption', message);
+      form.append('access_token', accessToken);
       const post = await providerRequest<{ id: string }>(this.key, 'Publicação de foto no Facebook', {
         method: 'POST',
         url: `${graphBase()}/${pageId}/photos`,
-        data: new URLSearchParams({
-          url: images[0].url,
-          caption: message,
-          access_token: accessToken,
-        }).toString(),
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        data: form,
+        timeout: 120_000,
       });
       return { externalPostId: post.id, status: 'PUBLISHED' };
     }
