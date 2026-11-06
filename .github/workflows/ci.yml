@@ -30,6 +30,6 @@ jobs:
       - name: Testes API
         run: npm run test --workspace=apps/api --if-present
       - name: Docker build API
-        run: docker build -t postae-api ./apps/api
+        run: docker build -f apps/api/Dockerfile -t postae-api .
       - name: Docker build Web
-        run: docker build -t postae-web ./apps/web
+        run: docker build -f apps/web/Dockerfile -t postae-web .
